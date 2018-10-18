@@ -1,5 +1,5 @@
-﻿[assembly: System.Reflection.AssemblyVersion("3.5.2.114")]
-[assembly: System.Reflection.AssemblyFileVersion("3.5.2.114")]
+//[assembly: System.Reflection.AssemblyVersion("3.5.2.114")]
+//[assembly: System.Reflection.AssemblyFileVersion("3.5.2.114")]
 
 namespace utility
 {
@@ -625,7 +625,7 @@ namespace utility
 
         public static void ShowUsage(Type type)
         {
-            /*Escape.Write("\n$yellow|Available operation arguments:\n");
+            Escape.Write("\n$yellow|Available operation arguments:\n");
             string exclude = "ToString,Equals,GetHashCode,GetType";
             foreach (System.Reflection.MethodInfo m in System.Linq.Enumerable.Where(type.GetMethods(), (method) => exclude.IndexOf(method.Name) < 0))
             {
@@ -645,16 +645,16 @@ namespace utility
             foreach (System.Reflection.PropertyInfo p in type.GetProperties())
             {
                 show_argument_info(p.Name, p.PropertyType);
-            }*/
+            }
         }
 
         private static void show_argument_info(string name, Type type)
         {
-            /*Escape.Write("\t$green|{0} : $cyan|{1}\n", name, type.FullName);
+            Escape.Write("\t$green|{0} : $cyan|{1}\n", name, type.FullName);
             if (type.IsEnum)
             {
                 Escape.Write("\t\t$cyan|{0}\n", System.Linq.Enumerable.Aggregate(Enum.GetNames(type), new System.Text.StringBuilder(), (whole, next) => { whole.Append(next + ","); return whole; }));
-            }*/
+            }
         }
 
         #region Iterators
