@@ -1,5 +1,5 @@
-//[assembly: System.Reflection.AssemblyVersion("3.4.1.113")]
-//[assembly: System.Reflection.AssemblyFileVersion("3.4.1.113")]
+//[assembly: System.Reflection.AssemblyVersion("3.3.1.110")]
+//[assembly: System.Reflection.AssemblyFileVersion("3.3.1.110")]
 
 namespace utility
 {
@@ -31,7 +31,7 @@ namespace utility
   #region Switch - design strategy v2.0
   public class Switch : IEnumerable<string>
   {
-    internal const string regexpr = @"(?<switch>^[-/]+)(?<name>[\w\.?]+)((?<turn>[+-])|[:=](?<value>.*))?";
+    internal const string regexpr = @"(?<switch>^[-/]+)(?<name>[\w\.]+)((?<turn>[+-])|[:=](?<value>.*))?";
 
     private const string ON = "+";
     private const string OFF = "-";
@@ -352,14 +352,7 @@ namespace utility
       {
         if (typevalue == null && default_value == null)
           default_value = Activator.CreateInstance(type);
-        try
-        {
-            return Enum.Parse(type, typevalue == null ? default_value.ToString() : typevalue, true);
-        }
-        catch (System.ArgumentException exception)
-        {
-          throw new ArgumentException(string.Format("Type {0} mismatch for literal value {1}.", type.FullName, typevalue), exception);
-        }
+        return Enum.Parse(type, typevalue == null ? default_value.ToString() : typevalue, true);
       }
       if (HasSingleStringConstructor(type))
         return StringConstructibleInstance(type, typevalue, default_value);
@@ -606,40 +599,6 @@ namespace utility
         return false;
     }
 
-    public static void ShowUsage(Type type)
-    {
-        Escape.Write("\n$yellow|Available operation arguments:\n");
-        string exclude = "ToString,Equals,GetHashCode,GetType";
-        foreach (System.Reflection.MethodInfo m in System.Linq.Enumerable.Where(type.GetMethods(),(method) => exclude.IndexOf(method.Name) < 0))
-        {
-            var usage = new System.Text.StringBuilder(m.Name + " ");
-            object[] attrs = m.GetCustomAttributes(typeof(UsageAttribute), false);
-            if (attrs != null && attrs.Length > 0)
-            {
-                System.Linq.Enumerable.Aggregate(System.Linq.Enumerable.Cast<UsageAttribute>(attrs), usage, (whole, next) => { whole.AppendFormat("-{0} ", next.Description); return whole; });
-            }
-            Escape.Write("\t$green|{0}\n", usage);
-        }
-        Escape.Write("\n$yellow|Available data arguments:\n");
-        foreach (System.Reflection.FieldInfo f in type.GetFields())
-        {
-            show_argument_info(f.Name, f.FieldType);
-        }
-        foreach (System.Reflection.PropertyInfo p in type.GetProperties())
-        {
-            show_argument_info(p.Name, p.PropertyType);
-        }
-    }
-
-    private static void show_argument_info(string name, Type type)
-    {
-        Escape.Write("\t$green|{0} : $cyan|{1}\n", name, type.FullName);
-        if (type.IsEnum)
-        {
-            Escape.Write("\t\t$cyan|{0}\n", System.Linq.Enumerable.Aggregate(Enum.GetNames(type), new System.Text.StringBuilder(), (whole, next) => { whole.Append(next + ","); return whole; }));
-        }
-    }
-
     #region Iterators
 
     public IEnumerable<string> SuffixOf(string arg_name, int namespace_id = 1)
@@ -723,149 +682,19 @@ namespace utility
 
   public class SystemArgumentParser
   {
-    #region SimpleCommandLineParser
-    class ParseState
-    {
-      public byte StateID;
-      public Action<SimpleCommandLineParser> FetchAction;
-    }
+    [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true)]
+    static extern IntPtr CommandLineToArgvW([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string commandline, out int argc);
 
-    class StateTable
-    {
-      private static Dictionary<byte, Dictionary<Input_Type, ParseState>> states;
-
-      internal StateTable()
-      {
-        states = new Dictionary<byte, Dictionary<Input_Type, ParseState>>();
-      }
-
-      public ParseState this[byte state, Input_Type input]
-      {
-        get
-        {
-          return states[state][input];
-        }
-        set
-        {
-          if (!states.ContainsKey(state))
-            states[state] = new Dictionary<Input_Type, ParseState>();
-          states[state][input] = value;
-        }
-      }
-    }
-
-    static class StateTableSingleton
-    {
-      private static readonly StateTable table;
-
-      static StateTableSingleton()
-      {
-        table = new StateTable();
-        table[0, Input_Type.Space] = new ParseState() { StateID = 0, FetchAction = null };
-        table[0, Input_Type.Character] = new ParseState() { StateID = 1, FetchAction = FetchChar };
-        table[0, Input_Type.Quote] = new ParseState() { StateID = 2, FetchAction = null };
-
-        table[1, Input_Type.Space] = new ParseState() { StateID = 0, FetchAction = FetchArgument };
-        table[1, Input_Type.Character] = new ParseState() { StateID = 1, FetchAction = FetchChar };
-        table[1, Input_Type.Quote] = new ParseState() { StateID = 2, FetchAction = null };
-
-        table[2, Input_Type.Space] = new ParseState() { StateID = 3, FetchAction = FetchChar };
-        table[2, Input_Type.Character] = new ParseState() { StateID = 3, FetchAction = FetchChar };
-        table[2, Input_Type.Quote] = new ParseState() { StateID = 0, FetchAction = FetchArgument };
-
-        table[3, Input_Type.Space] = new ParseState() { StateID = 3, FetchAction = FetchChar };
-        table[3, Input_Type.Character] = new ParseState() { StateID = 3, FetchAction = FetchChar };
-        table[3, Input_Type.Quote] = new ParseState() { StateID = 4, FetchAction = null };
-
-        table[4, Input_Type.Space] = new ParseState() { StateID = 0, FetchAction = FetchArgument };
-        table[4, Input_Type.Character] = new ParseState() { StateID = 3, FetchAction = FetchChar };
-        table[4, Input_Type.Quote] = new ParseState() { StateID = 3, FetchAction = null };
-      }
-
-      public static StateTable Instance { get { return table; } }
-
-      private static void FetchChar(SimpleCommandLineParser parser)
-      {
-        parser.FetchChar();
-      }
-
-      private static void FetchArgument(SimpleCommandLineParser parser)
-      {
-        parser.FetchArgument();
-      }
-    }
-
-    enum Input_Type : byte
-    {
-      Space = 0,
-      Character = 1,
-      Quote = 2
-    }
-
-    class SimpleCommandLineParser
-    {
-      private string input;
-      private List<string> result;
-      private System.Text.StringBuilder currently__build_arg;
-      private char input_char;
-      private ParseState state;
-      private StateTable state_table;
-
-      public SimpleCommandLineParser(string input)
-      {
-        this.input = input;
-        result = new List<string>();
-        currently__build_arg = new System.Text.StringBuilder();
-        state = new ParseState() { StateID = 0 };
-        state_table = StateTableSingleton.Instance;
-      }
-
-      public string[] Parse()
-      {
-        for (int k = 0; k < input.Length; ++k)
-        {
-          input_char = input[k];
-          Input_Type input_char_type = 0;
-          if (input_char == ' ')
-            input_char_type = Input_Type.Space;
-          else if (input_char == '"')
-            input_char_type = Input_Type.Quote;
-          else
-            input_char_type = Input_Type.Character;
-          state = state_table[state.StateID, input_char_type];
-          if (state.FetchAction != null)
-            state.FetchAction(this);
-        }
-        state = state_table[state.StateID, Input_Type.Space];
-        if (state.FetchAction != null)
-          state.FetchAction(this);
-        return result.ToArray();
-      }
-
-      internal void FetchChar()
-      {
-        currently__build_arg.Append(input_char);
-      }
-
-      internal void FetchArgument()
-      {
-        result.Add(currently__build_arg.ToString());
-        currently__build_arg = new System.Text.StringBuilder();
-      }
-    }
-    #endregion
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    static extern IntPtr LocalFree(IntPtr hMem);
 
     public static string[] Parse(string input)
     {
-      if (string.IsNullOrWhiteSpace(input) || input.Length == 0)
+      if (string.IsNullOrEmpty(input) || input.Length == 0)
         throw new ArgumentException("Cannot parse an empty embedded command-line string");
 
-#if !SYS_SUB_CMDLINE
-      var parser = new SimpleCommandLineParser(input);
-      return parser.Parse();
-#endif
+      //return input.Split(' '); //no CAS needed but inner space and quotes capacity is lost
 
-#if SYS_SUB_CMDLINE
       var allowance = new System.Security.Permissions.SecurityPermission(System.Security.Permissions.SecurityPermissionFlag.UnmanagedCode);
       allowance.Assert();
       IntPtr argv = IntPtr.Zero;
@@ -888,16 +717,7 @@ namespace utility
         LocalFree(argv);
         System.Security.CodeAccessPermission.RevertAssert();
       }
-#endif
     }
-
-#if SYS_SUB_CMDLINE
-    [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true)]
-    static extern IntPtr CommandLineToArgvW([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string commandline, out int argc);
-
-    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
-    static extern IntPtr LocalFree(IntPtr hMem);
-#endif
   }
 
   #endregion
