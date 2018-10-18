@@ -32,7 +32,7 @@ namespace utility
     #region Switch - design strategy v2.0
     public class Switch : IEnumerable<string>
     {
-        internal const string regexpr = @"(?<switch>^[-/]+)(?<name>[\w\.?]+)((?<turn>[+-])|[:=](?<value>.*))?";
+        public const string regexpr = @"(?<switch>^[-/]+)(?<name>[\w\.?]+)((?<turn>[+-])|[:=](?<value>.*))?";
 
         private const string ON = "+";
         private const string OFF = "-";
